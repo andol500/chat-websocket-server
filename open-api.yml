@@ -1,0 +1,356 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Chat Server
+servers:
+  - url: http://localhost:5000
+    description: Local server
+  - url: ws://localhost:5000
+    description: Local websocket server
+paths:
+  /sessions:
+    post:
+      summary: Login to the application
+      tags:
+        - Auth
+      requestBody: 
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Login"
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        default:
+          description: Error message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users:
+    get:
+      summary: Get User
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        default:
+          description: Error message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  
+  /chats:
+    get:
+      summary: Get Chats
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageQueryParam"
+        - $ref: "#/components/parameters/PerPageQueryParam"
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chat"
+        default:
+          description: Error message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create a Chat
+      tags:
+        - Chats
+      description: Create a Chats, you do not need to include your own username in the users array
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Chat"
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chat"
+        default:
+          description: Error message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /chats/{chatId}:
+    get:
+      summary: Get Chat with messages
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ChatIdPathParam"
+        - $ref: "#/components/parameters/PageQueryParam"
+        - $ref: "#/components/parameters/PerPageQueryParam"
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chat"
+        default:
+          description: Error message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /chats/{chatId}/messages:
+    get:
+      summary: Get Messages from chat
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ChatIdPathParam"
+        - $ref: "#/components/parameters/PageQueryParam"
+        - $ref: "#/components/parameters/PerPageQueryParam"
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        default:
+          description: Error message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Post Messages to Chat
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chatId
+          schema:
+            type: string
+          required: true
+          description: Chat ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        default:
+          description: Error message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /chats/{chatId}/messages/{messageId}:
+    delete:
+      summary: Delete Message from Chat
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ChatIdPathParam"
+        - in: path
+          name: messageId
+          schema:
+            type: string
+          required: true
+          description: Message ID
+      responses:
+        '200':
+          description: OK
+        default:
+          description: Error message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /chats/{chatId}/websocket:
+    get:
+      summary: Connect to websocket server for a chat
+      tags:
+        - Chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chatId
+          schema:
+            type: string
+          required: true
+          description: Chat ID
+      responses:
+          '101':
+            description: Switching Protocols
+      description: |
+        WebSocket messages sent within the chat should follow the following format: \
+        \
+        { \
+          type: "message",\
+          message: { \
+            "content": "string"\
+          } \
+        } \
+        \
+        Message is the same as the Message schema. The type field is used to determine the type of message.
+        The following types are supported: message, typeing
+      servers:
+        - url: ws://localhost/chat/{chatId}/websocket
+                
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Chat: 
+      type: object
+      properties:
+        id:
+          readOnly: true
+          type: string
+        title:
+          type: string
+        users: 
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        messages:
+          type: array
+          description: Only the last message is returned
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Message"
+              - readOnly: true
+        websocket:
+          readOnly: true
+          type: string
+          example: ws://localhost:5000/chats/1/websocket
+    Message: 
+      type: object
+      properties:
+        id: 
+          readOnly: true
+          type: number
+        authur:
+          allOf:
+            - $ref: "#/components/schemas/User"
+            - readOnly: true
+        timestamp:
+          readOnly: true
+          type: string
+        content:
+          type: string
+    User: 
+      type: object
+      properties:
+        username:
+          type: string
+        name:
+          readOnly: true
+          type: string
+        role:
+          readOnly: true
+          type: string
+    Login:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    Session:
+      type: object
+      properties:
+        username:
+          type: string
+        role:
+          type: string
+        token:
+          type: string
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+  parameters:
+    ChatIdPathParam:
+      in: path
+      name: chatId
+      schema:
+        type: string
+      required: true
+      description: Chat ID
+    PageQueryParam:
+      in: query
+      name: page
+      description: Page number for message
+      schema:
+        type: integer
+    PerPageQueryParam:
+      in: query
+      name: per_page
+      description: How many messages per page
+      schema:
+        type: integer
